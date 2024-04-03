@@ -1,0 +1,447 @@
+---
+title: "CRAZIE Regime Shifts"
+author: "Zechariah Meunier"
+date: "Last updated `r format(Sys.Date(), '%B %d, %Y')`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+### Libraries
+
+```{r}
+library(ggplot2)
+library(ggh4x)
+library(extrafont)
+loadfonts(device = "all") 
+library(wesanderson)
+library(dplyr)
+library(vegan)
+library(pairwiseAdonis)
+library(tidyr)
+```
+
+### Hidden Markov Model Figures
+
+Load the relative abundances of alternative states (`regimes`). Set site colors.
+```{r}
+regimes <- read.csv(file="Data/Hidden Markov Model/Regime Shifts.csv",
+                       header=TRUE, sep=",")
+
+regimes$Site <- factor(regimes$Site, levels = c("FC","BB","MB","YB","SH","TK",
+                                                "CBN","CBS","POH","RP","CMN","CMS","KH"))
+regimes$State <- factor(regimes$State, levels = c(1,2))
+
+
+sitecolors <- wes_palette(n = 5, name = "Zissou1", type = "discrete")[c(1,3,5)]
+```
+
+Save template for regime shift plots.
+```{r}
+regimetheme <- 
+  theme(axis.title = element_text(size = 11, color = "gray10",
+                                  family = "Roboto"),
+        axis.text.y = element_text(color ="gray10",
+                                   family = "Roboto"),
+        axis.text.x = element_text(color = "gray10", size = 7.25,
+                                   hjust = -0.1,
+                                   family = "Roboto"),
+        axis.ticks = element_line(color = "gray10"),
+        panel.background = element_blank(),
+        panel.border = element_rect(fill = NA, color = "gray10"),
+        legend.key = element_blank(), 
+        legend.justification = c(0,1.1),
+        legend.position = "top",
+        legend.box = "vertical",
+        legend.box.just = "left",
+        legend.box.spacing = unit(0,"cm"),
+        legend.margin=margin(),
+        legend.spacing.y = unit(0,"cm"),
+        legend.title = element_text(size = 10, color = "gray10",
+                                    family = "Roboto"),
+        legend.text = element_text(size = 9, color = "gray10",
+                                   family = "Roboto"),
+        plot.tag = element_text(size = 20, color="gray10",
+                                family = "Roboto"),
+        plot.tag.position = c(0.03,0.95))
+```
+
+Plot regime shifts at Cape Foulweather.
+```{r}
+CFregimes <- ggplot(data = filter(regimes, Cape == "CF"),
+                    aes(x = Year, y = Count*20, color = Site, linetype = State)) +
+  annotate("rect", xmin = 2014.25, xmax = 2016.25, ymin = -Inf, ymax = Inf, 
+           alpha = 0.1, fill = "firebrick") +
+  annotate("segment", x = 2013.75, xend = 2013.75, y = -Inf, yend = Inf, 
+           color = "gray10", linetype = "dashed", size=0.65) +
+  annotate("text", color = "gray10", size = 4, family = "Roboto",
+           x = c(2012.75, 2015.25), y = c(105, 105), label = c("SSWD", "MHW")) +
+  annotate("text", color = "gray10", size = 4, family = "Roboto",
+           x = 2006, y = 105, hjust = 0, label = "Cape Foulweather") +
+  geom_line(size = 1, alpha = 0.8) +
+  guides(linetype = guide_legend(order = 1, nrow = 2, byrow = T)) +
+  scale_color_manual(values = sitecolors, name = "Site") +
+  scale_linetype_manual(values = c("solid","twodash"), name = "State",
+                        labels = c("1: Surfgrasses (C), Substrate (R,M,I)",
+                                   "2: Surfgrasses + mussels (C), Surfgrasses (R,M), CCA (I)")) +
+  scale_x_continuous(name = "Year", breaks = seq(2005.5,2019.5,1),
+                     labels = seq(2006,2020,1)) +
+  scale_y_continuous(name = "Alternative State Relative Abundance (%)") +
+  #labs(tag = "a") +
+  regimetheme
+
+ggsave(CFregimes,
+       filename = "Figures & Tables/HMM Graphs/CF Regimes 20240328.svg", 
+       width = 5, height = 4, units = "in", dpi = 800)
+```
+
+Plot regime shifts at Cape Perpetua.
+```{r}
+CPregimes <- ggplot(data = filter(regimes, Cape == "CP"),
+                    aes(x = Year, y = Count*20, color = Site, linetype = State)) +
+  annotate("rect", xmin = 2014.25, xmax = 2016.25, ymin = -Inf, ymax = Inf, 
+           alpha = 0.1, fill = "firebrick") +
+  annotate("segment", x = 2013.75, xend = 2013.75, y = -Inf, yend = Inf, 
+           color = "gray10", linetype = "dashed", size=0.65) +
+  annotate("text", color = "gray10", size = 4, family = "Roboto",
+           x = c(2012.75, 2015.25), y = c(105, 105), label = c("SSWD", "MHW")) +
+  annotate("text", color = "gray10", size = 4, family = "Roboto",
+           x = 2006, y = 105, hjust = 0, label = "Cape Perpetua") +
+  geom_line(size = 1, alpha = 0.8) +
+  guides(linetype = guide_legend(order = 1, nrow = 2, byrow = T)) +
+  scale_color_manual(values = sitecolors, name = "Site") +
+  scale_linetype_manual(values = c("solid","twodash"), name = "State",
+                        labels = c("1: Substrate (C,R,M,I)",
+                                   "2: Gooseneck barnacles (C,R,I), Substrate (M)")) +
+  scale_x_continuous(name = "Year", breaks = seq(2005.5,2019.5,1),
+                     labels = seq(2006,2020,1)) +
+  scale_y_continuous(name = "Alternative State Relative Abundance (%)") +
+  #labs(tag = "b") +
+  regimetheme
+
+ggsave(CPregimes,
+       filename = "Figures & Tables/HMM Graphs/CP Regimes 20240328.svg", 
+       width = 5, height = 4, units = "in", dpi = 800)
+```
+
+Plot regime shifts at Cape Blanco.
+```{r}
+CBregimes <- ggplot(data = filter(regimes, Cape == "CB"),
+                    aes(x = Year, y = Count*20, color = Site, linetype = State)) +
+  annotate("rect", xmin = 2014.25, xmax = 2016.25, ymin = -Inf, ymax = Inf, 
+           alpha = 0.1, fill = "firebrick") +
+  annotate("segment", x = 2013.75, xend = 2013.75, y = -Inf, yend = Inf, 
+           color = "gray10", linetype = "dashed", size=0.65) +
+  annotate("text", color = "gray10", size = 4, family = "Roboto",
+           x = c(2012.75, 2015.25), y = c(105, 105), label = c("SSWD", "MHW")) +
+  annotate("text", color = "gray10", size = 4, family = "Roboto",
+           x = 2006, y = 105, hjust = 0, label = "Cape Blanco") +
+  geom_line(size = 1, alpha = 0.8) +
+  guides(linetype = guide_legend(order = 1, nrow = 2, byrow = T)) +
+  scale_color_manual(values = c(sitecolors,"#234290"), name = "Site") +
+  scale_linetype_manual(values = c("solid","twodash"), name = "State",
+                        labels = c("1: Kelps + BBA (C), Substrate (R,M,I)",
+                                   "2: No dominant (C,R,M), Substrate (I)")) +
+  scale_x_continuous(name = "Year", breaks = seq(2005.5,2019.5,1),
+                     labels = seq(2006,2020,1)) +
+  scale_y_continuous(name = "Alternative State Relative Abundance (%)") +
+  #labs(tag = "c") +
+  regimetheme
+
+ggsave(CBregimes,
+       filename = "Figures & Tables/HMM Graphs/CB Regimes 20240328.svg", 
+       width = 5, height = 4, units = "in", dpi = 800)
+```
+
+Plot regime shifts at Cape Mendocino.
+```{r}
+CMregimes <- ggplot(data = filter(regimes, Cape == "CM"),
+                    aes(x = Year, y = Count*20, color = Site, linetype = State)) +
+  annotate("rect", xmin = 2014.25, xmax = 2016.25, ymin = -Inf, ymax = Inf, 
+           alpha = 0.1, fill = "firebrick") +
+  annotate("segment", x = 2013.75, xend = 2013.75, y = -Inf, yend = Inf, 
+           color = "gray10", linetype = "dashed", size=0.65) +
+  annotate("text", color = "gray10", size = 4, family = "Roboto",
+           x = c(2012.75, 2015.25), y = c(105, 105), label = c("SSWD", "MHW")) +
+  annotate("text", color = "gray10", size = 4, family = "Roboto",
+           x = 2006, y = 105, hjust = 0, label = "Cape Mendocino") +
+  geom_line(size = 1, alpha = 0.8) +
+  guides(linetype = guide_legend(order = 1, nrow = 2, byrow = T)) +
+  scale_color_manual(values = sitecolors, name = "Site") +
+  scale_linetype_manual(values = c("solid","twodash"), name = "State",
+                        labels = c("1: Kelps + BBA (C,R,M), Substrate + CCA (I)",
+                                   "2: Mussels (C,R), BBA (M), Mussels + CCA (I)")) +
+  scale_x_continuous(name = "Year", breaks = seq(2005.5,2019.5,1),
+                     labels = seq(2006,2020,1)) +
+  scale_y_continuous(name = "Alternative State Relative Abundance (%)") +
+  #labs(tag = "d") +
+  regimetheme
+
+ggsave(CMregimes,
+       filename = "Figures & Tables/HMM Graphs/CM Regimes 20240328.svg", 
+       width = 5, height = 4, units = "in", dpi = 800)
+```
+
+Plot all capes on one graph.
+```{r}
+caperegimes <- regimes %>%
+  group_by(Cape,Year,State) %>%
+  summarize(Count=sum(Count))
+
+ggplot(data = caperegimes, aes(x = Year, y = Count, color = Cape, linetype = State)) +
+ annotate("rect", xmin = 2014.25, xmax = 2016.25, ymin = -Inf, ymax = Inf, 
+           alpha = 0.1, fill = "firebrick") +
+  annotate("segment", x = 2013.75, xend = 2013.75, y = -Inf, yend = Inf, 
+           color = "gray10", linetype = "dashed", size=0.65) +
+  annotate("text", color = "gray10", size = 4, family = "Roboto",
+           x = c(2012.75, 2015.25), y = c(20, 20), label = c("SSWD", "MHW")) +
+  geom_line(size = 1, alpha = 0.8) +
+  guides(linetype = guide_legend(order = 1, nrow = 2, byrow = T)) +
+  scale_x_continuous(name = "Year", breaks = seq(2005.5,2019.5,1),
+                     labels = seq(2006,2020,1)) +
+  scale_y_continuous(name = "Alternative State Count") +
+  regimetheme
+```
+
+### Bray-Curtis Dissimilarity Figure
+
+Filter rows comparing the same plot and add metadata to `sslFG_BC_long`.
+```{r}
+#Only look at rows comparing the same plot over time
+sslFG_BC_long$Plot1 <- factor(dscmat$Plot[match(sslFG_BC_long$PlotID1, dscmat$PlotID)])
+sslFG_BC_long$Plot2 <- factor(dscmat$Plot[match(sslFG_BC_long$PlotID2, dscmat$PlotID)])
+
+sslFG_BC_pair <- filter(sslFG_BC_long, Plot1 == Plot2)
+
+#Add factor metadata
+sslFG_BC_pair$Plot1 <- factor(sslFG_BC_pair$Plot1, levels = unique(sslFG_BC_pair$Plot1))
+sslFG_BC_pair$Cape <- factor(dscmat$Cape[match(sslFG_BC_pair$PlotID1, dscmat$PlotID)],
+                                levels = c("CF","CP","CB","CM"))
+sslFG_BC_pair$Site <- factor(dscmat$Site[match(sslFG_BC_pair$PlotID1, dscmat$PlotID)],
+                                levels = c("FC","BB","MB","YB","SH","TK","CBN",
+                                           "CBS","POH","RP","CMN","CMS","KH"))
+sslFG_BC_pair$Trt <- factor(dscmat$Trt[match(sslFG_BC_pair$PlotID1, dscmat$PlotID)],
+                                levels = c("C","R","A","I"))
+sslFG_BC_pair$Treatment <- recode(sslFG_BC_pair$Trt, C="Control", R="Recovery",
+                                  A="Macrophyte-only",I="Invertebrate-only")
+sslFG_BC_pair$Year1 <- dscmat$Year[match(sslFG_BC_pair$PlotID1, dscmat$PlotID)]
+sslFG_BC_pair$Year2 <- dscmat$Year[match(sslFG_BC_pair$PlotID2, dscmat$PlotID)]
+sslFG_BC_pair$PeriodMHW1 <- factor(dscmat$PeriodMHW[match(sslFG_BC_pair$PlotID1, dscmat$PlotID)],
+                                   levels = c("Before","During","After"))
+sslFG_BC_pair$PeriodMHW2 <- factor(dscmat$PeriodMHW[match(sslFG_BC_pair$PlotID2, dscmat$PlotID)],
+                                   levels = c("Before","During","After"))
+```
+
+Save plot theme and color scheme.
+```{r}
+BCtheme <- 
+  theme(axis.title = element_text(size = 11, color = "gray10", family = "Roboto"),
+        axis.text = element_text(color ="gray10", family = "Roboto"),
+        axis.ticks = element_line(color = "gray10"),
+        panel.background = element_blank(),
+        panel.border = element_rect(fill = NA, color = "gray10"),
+        legend.key = element_blank(), 
+        legend.position = "top",
+        legend.box = "vertical",
+        legend.box.just = "center",
+        legend.box.spacing = unit(0.1,"cm"),
+        legend.title = element_text(size = 10, color = "gray10", family = "Roboto"),
+        legend.text = element_text(size = 9, color = "gray10", family = "Roboto"))
+
+periodcolors <- c("dodgerblue","firebrick","darkorange")
+```
+
+Plot Bray-Curtis similarities.
+```{r}
+SimPlot <-ggplot(data = filter(sslFG_BC_pair, PeriodMHW1 == "Before"),
+       aes(x=interaction(Cape,Treatment), y=1-BC.Dist,
+           group=PeriodMHW2, color=PeriodMHW2, shape=PeriodMHW2)) +
+  geom_hline(yintercept = 0.5, linetype = "dashed") +
+  geom_vline(xintercept = c(4.5,8.5,12.5), color = "gray10", alpha=1) +
+  stat_summary(#fun.data = "median_hilow", fun.args = list(conf.int=0.5), #median, 25th & 75th percentiles
+               #fun.data = "mean_sdl", fun.args = list(mult=1), #mean, 1 SD
+               fun.data = "mean_cl_boot", fun.args = list(conf.int=0.99), #mean, 99% confidence interval
+               #fun = mean, #mean, 1 SE
+               #fun.max = function(x) mean(x) + sd(x) / sqrt(length(x)),
+               #fun.min = function(x) mean(x) - sd(x) / sqrt(length(x)), 
+               alpha = 1, position = position_dodge(width = 0.5), size = 0.6, linewidth=0.8) +
+  scale_x_discrete(name = "Treatment and Cape", guide = "axis_nested") +
+  scale_y_continuous(name =expression(paste("Community Similarity (",
+                                            1-"Bray-Curtis dissimilarity)")),
+                     limits = c(0,1), breaks = seq(0,1,0.1)) +
+  scale_color_manual(values = periodcolors, name = "",
+                     labels = c("Pre-disturbance (before-to-before)",
+                                "Resistance (before-to-during)",
+                                "Resilience (before-to-after)")) +
+  scale_shape_manual(values = c(16,17,18), name = "",
+                     labels = c("Pre-disturbance (before-to-before)",
+                                "Resistance (before-to-during)",
+                                "Resilience (before-to-after)")) +
+ annotate("text", y=c(0.8,   0.795, 0.795, 0.795,
+                      0.8,   0.795, 0.795, 0.8,
+                      0.8,   0.8,   0.795, 0.8,
+                      0.795, 0.795, 0.795, 0.795), x=(1:16),
+           color = periodcolors[2], family = "Roboto",
+           label = c("ns","***","***","*", #C
+                     "ns","***","***","ns", #R
+                     "ns","ns","**","ns", #A
+                     "*","***","***","**")) + #I   
+  annotate("text", y=c(0.77,  0.765, 0.765, 0.765,
+                       0.765, 0.765, 0.77,  0.765,
+                       0.77,  0.77,  0.765, 0.77,
+                       0.77,  0.765, 0.765, 0.765), x=(1:16),
+           color = periodcolors[3], family = "Roboto",
+           label = c("ns","***","**","***", #C
+                     "*","***","ns","*", #R
+                     "ns","ns","**","ns", #A
+                     "ns","***","**","**")) + #I  
+  coord_cartesian(ylim = c(0.2,0.8)) +
+  BCtheme
+
+ggsave(SimPlot, filename = "Figures & Tables/Dissimilarity/BC Similarity 20240328.svg",
+       dpi = 800, width = 7, height = 5, units = "in")
+```
+
+Store source data.
+```{r}
+SimPlotSource <- ggplot_build(SimPlot)$data[[3]]
+
+write.csv(SimPlotSource, "Results/Bray-Curtis Similarities.csv")
+```
+
+Prepare the missing data.
+```{r}
+missing_during <- dscmat_unsurveyed %>%
+  group_by(Plot, PeriodMHW, Cape, Trt) %>%
+  summarize(Count = n()) %>%
+  filter(PeriodMHW == "During" & Count == 2)
+
+missing_after <- dscmat_unsurveyed %>%
+  group_by(Plot, PeriodMHW, Cape, Trt) %>%
+  summarize(Count = n()) %>%
+  filter(PeriodMHW == "After" & Count == 4) 
+```
+
+Summarize the Bray-Curtis similarities within treatment, cape, and period.
+```{r}
+sslFG_BC_summary <- sslFG_BC_pair %>%
+  filter(PeriodMHW1 == "Before") %>%
+  group_by(Plot1, PeriodMHW2, Cape, Trt) %>%
+  summarize(meanBC.Sim = mean(1-BC.Dist),
+            countBC.Sim = n())
+```
+
+Perform paired t-tests.
+```{r}
+before_v_during_results <- list()
+before_v_after_results <- list()
+list_names <- c("CF_C","CF_R","CF_A","CF_I",
+                "CP_C","CP_R","CP_A","CP_I",
+                "CB_C","CB_R","CB_A","CB_I",
+                "CM_C","CM_R","CM_A","CM_I")
+
+#Ha: before-to-before has higher similarity (one-sided greater) than before-to-during
+for(i in 1:4){ #cape index
+  for(j in 1:4){ #trt index
+    before_v_during_results[[4*(i-1)+j]] <- 
+      t.test(data = filter(sslFG_BC_summary,
+                           !Plot1 %in% missing_during$Plot,
+                           Cape == levels(sslFG_BC_summary$Cape)[i],
+                           Trt == levels(sslFG_BC_summary$Trt)[j],
+                           PeriodMHW2 %in% c("Before","During")),
+           meanBC.Sim ~ PeriodMHW2,
+           paired = TRUE,
+           alternative = "greater", 
+           var.equal = FALSE)
+  }
+}
+names(before_v_during_results) <- list_names
+
+#Ha: before-to-before has higher similarity (one-sided greater) than before-to-after
+for(i in 1:4){ #cape index
+  for(j in 1:4){ #trt index
+    before_v_after_results[[4*(i-1)+j]] <- 
+      t.test(data = filter(sslFG_BC_summary,
+                           !Plot1 %in% missing_after$Plot,
+                           Cape == levels(sslFG_BC_summary$Cape)[i],
+                           Trt == levels(sslFG_BC_summary$Trt)[j],
+                           PeriodMHW2 %in% c("Before","After")),
+           meanBC.Sim ~ PeriodMHW2,
+           paired = TRUE,
+           alternative = "greater", 
+           var.equal = FALSE)
+  }
+}
+names(before_v_after_results) <- list_names
+```
+
+Create a data table with the paired t-test results.
+```{r}
+t.test.results <- data.frame(Index=1:32)
+t.test.results$Comparison <- c(rep("During",16),rep("After",16))
+t.test.results$Cape_Trt <- c(names(before_v_during_results),
+                             names(before_v_after_results))
+for(i in 1:16) {#before vs. during
+                t.test.results$estimate[i] <- before_v_during_results[[i]]$estimate
+                t.test.results$t.stat[i]  <- before_v_during_results[[i]]$statistic
+                t.test.results$df[i] <- before_v_during_results[[i]]$parameter
+                t.test.results$p.value[i] <- round(before_v_during_results[[i]]$p.value,7)
+                #before vs. after
+                t.test.results$estimate[i+16] <- before_v_after_results[[i]]$estimate
+                t.test.results$t.stat[i+16]  <- before_v_after_results[[i]]$statistic
+                t.test.results$df[i+16] <- before_v_after_results[[i]]$parameter
+                t.test.results$p.value[i+16] <- round(before_v_after_results[[i]]$p.value,7)
+               }
+```
+
+Correct for multiple comparisons.
+```{r}
+#Rank p-values from low to high within each type of comparison
+t.test.results$p.order <- c(rank(filter(t.test.results, Comparison == "During")$p.value),
+                            rank(filter(t.test.results, Comparison == "After")$p.value))
+
+#Perform Holm-Bonferroni correction
+t.test.results$p.holm <- t.test.results$p.value *
+  (max(t.test.results$p.order) - t.test.results$p.order + 1)
+
+#Perform Benjamini-Hochberg procedure
+ggplot(data = filter(t.test.results, Comparison == "During"), 
+       aes(x = p.order, y = p.value)) +
+  geom_point() +
+  geom_abline(slope = 0.05/16, intercept = 0) +
+  geom_abline(slope = 0, intercept = 0.05, linetype = "dashed") +
+  theme_bw() + labs(subtitle = "Resistance")
+
+ggplot(data = filter(t.test.results, Comparison == "After"), 
+       aes(x = p.order, y = p.value)) +
+  geom_point() +
+  geom_abline(slope = 0.05/16, intercept = 0) +
+  geom_abline(slope = 0, intercept = 0.05, linetype = "dashed") +
+  theme_bw() + labs(subtitle = "Resilience") 
+
+#Accept p-values below 0.03 based on BH procedure
+t.test.results <- mutate(t.test.results, p.code = 
+                           if_else(p.value > 0.03, "NS",
+                              if_else(p.value <= 0.03 & p.value >= 0.01, "*",
+                                if_else(p.value < 0.01 & p.value >= 0.001, "**", "***"))))
+
+write.csv(t.test.results, file = "../Results/BC Similarity Paired t-tests.csv")
+```
+
+Plot the changes in BC distance over time.
+```{r}
+trtcolors <- c("#377eb8", "#e41a1c", "#4daf4a", "black")
+
+ggplot(data = filter(sslFG_BC_summary, Cape == "CM"),
+       aes(x=Year2, y=meanBC.Sim, group=Trt, color=Trt)) +
+  geom_line() +
+  geom_point() +
+  scale_x_discrete(name = "Year") +
+  scale_y_continuous(name = "Community Dissimilarity (Bray-Curtis distance)",
+                     limits = c(0,1)) +
+  scale_color_manual(values = trtcolors, 
+                     labels = c("Control", "Recovery",
+                                "Macrophyte-only", "Invertebrate-only")) +
+  theme_bw()
+```
+
+
