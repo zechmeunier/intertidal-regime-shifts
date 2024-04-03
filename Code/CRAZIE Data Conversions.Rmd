@@ -1,0 +1,135 @@
+---
+title: "CRAZIE Data Conversions"
+author: "Zechariah Meunier"
+date: "Last updated `r format(Sys.Date(), '%B %d, %Y')`"
+output: pdf_document
+editor_options: 
+  chunk_output_type: inline
+---
+### Libraries and Data
+
+Load libraries:  
+
+* `dplyr` for data manipulations  
+* `reshape2` for restructuring data frames  
+* `vegan` for dissimilarity indices and Mantel tests
+```{r message=FALSE}
+library(dplyr)
+library(reshape2)
+library(vegan)
+```
+
+Load plot descriptor matrix (`dscmat`), species matrix (`sppmat`), and species to functional group mapping matrix (`spp2FGmat`)
+```{r}
+dscmat <- read.csv(file="../Data/CRAZIE Descriptor Matrix.csv",
+                   header=TRUE, sep=",")
+
+sppmat <- read.csv(file="../Data/CRAZIE Species Matrix.csv",
+                   header=TRUE, sep=",", row.names = 1)
+
+spp2FGmat <- read.csv(file="../Data/CRAZIE Spp-FG Mapping Matrix.csv",
+                      header=TRUE, sep=",")
+```
+
+Subset surveyed plots and years of interest from `dscmat` and `sppmat`.
+```{r}
+years <- c(2006:2020)
+
+dscmat_subset <- filter(dscmat, Surveyed == 1, Year %in% years)
+dscmat_unsurveyed <- filter(dscmat, Surveyed == 0, Year %in% years)
+
+sppmat_subset <- filter(sppmat, row.names(sppmat) %in% dscmat_subset$PlotID)
+```
+
+Create functional group matrices by organizing taxa into specified functional groups and summing counts and percent covers within groups.
+```{r}
+#Narrow Functional Group Matrix
+narrowFGmat <- sppmat_subset
+
+colnames(narrowFGmat) <- spp2FGmat$NarrowFG2[match(colnames(sppmat_subset),
+                                            spp2FGmat$ColName)]
+
+narrowFGmat <- as.data.frame(t(rowsum(t(narrowFGmat), group = colnames(narrowFGmat),
+                                reorder = F, na.rm = T)))
+
+#Broad Functional Group Matrix
+broadFGmat <- sppmat
+
+colnames(broadFGmat) <- spp2FGmat$BroadFG[match(colnames(sppmat_subset),
+                                            spp2FGmat$ColName)]
+
+broadFGmat <- as.data.frame(t(rowsum(t(broadFGmat), group = colnames(broadFGmat),
+                                reorder = F, na.rm = F)))
+```
+
+Subset functional groups of interest.
+```{r}
+broadFGs <- c("Substrate", "Sessile invertebrates", "Crusts", "Macrophytes")
+
+narrowFGs <- unique(subset(spp2FGmat, BroadFG %in% broadFGs)$NarrowFG2)
+
+sslFGmat <- select(narrowFGmat, all_of(narrowFGs))
+
+trtFGs <- c("Sessile invertebrates", "Macrophytes")
+
+trtFGmat <- select(broadFGmat, all_of(trtFGs))
+```
+
+### Compare Community Matrices 
+
+Calculate coefficient of variation, relativizations, and transformations.
+```{r}
+#Coefficient of variation for columns and rows. Values >100 suggest that 
+#relativizing could have a large effect on results.
+paste("Column CV%:", round(100*sd(colSums(sslFGmat))/mean(colSums(sslFGmat)),
+                           digits = 2))
+paste("Row CV%:", round(100*sd(colSums(t(sslFGmat)))/mean(colSums(t(sslFGmat))),
+                           digits = 2))
+
+#Relativization by column maximum for proportion data
+source("Matrix Relativizing Functions.R")
+sslFG_prop <- rel.col.max(sslFGmat)
+
+#Transformations for percent cover data
+sslFG_sqrt <- sqrt(sslFGmat)
+sslFG_4rt <- sslFGmat^0.25
+sslFG_log <- log(sslFGmat+1)
+
+#Transformations for proportion data
+sslFG_prop_sqrt <- sqrt(sslFG_prop)
+sslFG_prop_asin_sqrt <-2/pi*asin(sqrt(sslFG_prop))
+```
+
+Calculate dissimilarity indices for all matrices.
+```{r}
+#Bray-Curtis dissimilarities
+sslFG_BC <- as.matrix(vegdist(sslFGmat, method = "bray"))
+sslFG_sqrt_BC <- as.matrix(vegdist(sslFG_sqrt, method = "bray"))
+sslFG_4rt_BC <- as.matrix(vegdist(sslFG_4rt, method = "bray"))
+sslFG_log_BC <- as.matrix(vegdist(sslFG_log, method = "bray"))
+sslFG_prop_BC <- as.matrix(vegdist(sslFG_prop, method = "bray"))
+sslFG_prop_sqrt_BC <- as.matrix(vegdist(sslFG_prop_sqrt, method = "bray"))
+sslFG_prop_asin_sqrt_BC <- as.matrix(vegdist(sslFG_prop_asin_sqrt, method = "bray"))
+
+#Chao dissimilarities
+sslFG_Chao <- as.matrix(vegdist(round(sslFGmat, digits = 0), method = "chao"))
+```
+
+Perform Mantel tests to compare matrices. If tests are significant, then reject the null hypothesis that there is no relationship between the two matrices.
+```{r}
+mantel(sslFG_BC, sslFG_Chao)
+mantel(sslFG_BC, sslFG_sqrt_BC)
+mantel(sslFG_BC, sslFG_4rt_BC)
+mantel(sslFG_BC, sslFG_log_BC)
+mantel(sslFG_BC, sslFG_prop_BC)
+mantel(sslFG_BC, sslFG_prop_sqrt_BC)
+mantel(sslFG_BC, sslFG_prop_asin_sqrt_BC)
+```
+
+Reformat Bray-Curtis dissimilarity matrix from square to pairwise.
+```{r}
+idx <- lower.tri(sslFG_BC)
+sslFG_BC_long <- cbind(rev(expand.grid(dimnames(sslFG_BC)))[which(idx),], val = sslFG_BC[idx])
+colnames(sslFG_BC_long) <- c("PlotID1","PlotID2","BC.Dist")
+```
+
