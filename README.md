@@ -22,5 +22,5 @@ Abstract will be available after journal article publication.
 ### Related Publications
 Hacker SD, Menge BA, Nielsen KJ, Chan F, Gouhier TC. 2019. Regional processes are stronger determinants of rocky intertidal community dynamics than local biotic interactions. *Ecology* 100, e02763. [https://doi.org/10.1002/ecy.2763](https://esajournals.onlinelibrary.wiley.com/doi/full/10.1002/ecy.2763)
 
-- Findings from the initial years (2006-2008) of CRAZIE indicated that regional processes such as upwelling and ocean temperature are generally more important than species interactions in rocky intertidal community dynamics
+- Findings from the initial years (2006-2008) of CRAZIE indicated that regional processes such as upwelling and ocean temperature are generally more important than species interactions in determining rocky intertidal community structure
 
