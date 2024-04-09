@@ -1,0 +1,227 @@
+---
+title: "CRAZIE Marine Heatwave"
+author: "Zechariah Meunier"
+date: "Last updated `r format(Sys.Date(), '%B %d, %Y')`"
+output: pdf_document
+---
+
+Load libraries:
+
+* `ggplot2` for creating data visualizations
+* `dplyr` for data frame manipulations
+* `heatwaveR` for detecting marine heatwaves
+* `lubridate` for working with dates
+* `extrafont` for custom fonts
+```{r, include=FALSE}
+library(ggplot2)
+library(dplyr)
+library(heatwaveR)
+library(lubridate)
+library(extrafont)
+```
+
+Store daily mean sea surface temperature (SST) per site and calculate daily mean SST per cape.
+```{r}
+SST_site <- CRZdailySST
+SST_cape <- vector(mode = "list", length = 4)
+names(SST_cape) <- c("CF","CP","CB","CM")
+
+SST_cape[[1]] <- filter(dailySSTlong, site %in% c("FC","BB","MB")) %>%
+  group_by(t) %>%
+  summarize(temp = mean(temp, na.rm = TRUE))
+
+SST_cape[[2]] <- filter(dailySSTlong, site %in% c("YB","SH","TK")) %>%
+  group_by(t) %>%
+  summarize(temp = mean(temp, na.rm = TRUE))
+
+SST_cape[[3]] <- filter(dailySSTlong, site %in% c("CBN","CBS","POH","RP")) %>%
+  group_by(t) %>%
+  summarize(temp = mean(temp, na.rm = TRUE))
+
+SST_cape[[4]] <- filter(dailySSTlong, site %in% c("CMN","CMS","KH")) %>%
+  group_by(t) %>%
+  summarize(temp = mean(temp, na.rm = TRUE))
+```
+
+Calculate climatologies and thresholds (`clim`) from temperature series. 
+Set `pctile = 90` for marine heatwaves or `10` for coldspells.
+```{r}
+#site-level
+clim_site <- list()
+
+for(i in 1:13){
+  clim_site[[i]] <- ts2clm(SST_site[[i]], x=t, y=temp, pctile=90,
+               climatologyPeriod = c(min(SST_site[[i]]$t),max(SST_site[[i]]$t)))
+  names(clim_site)[i] <- names(SST_site)[i]}
+
+#cape-level
+clim_cape <- list()
+
+for(i in 1:4){
+  clim_cape[[i]] <- ts2clm(SST_cape[[i]], x=t, y=temp, pctile=90,
+               climatologyPeriod = c(min(SST_cape[[i]]$t),max(SST_cape[[i]]$t)))
+  names(clim_cape)[i] <- names(SST_cape)[i]
+  write.csv(clim_cape[[i]], paste0("../Results/R Export/",
+                                    names(SST_cape[i]), " Climatology.csv"))}
+
+#only run below if loading climatologies already calculated
+clim_cape[[1]] <- read.csv("../Results/R Export/CF Climatology.csv")[,2:6]
+clim_cape[[2]] <- read.csv("../Results/R Export/CP Climatology.csv")[,2:6]
+clim_cape[[3]] <- read.csv("../Results/R Export/CB Climatology.csv")[,2:6]
+clim_cape[[4]] <- read.csv("../Results/R Export/CM Climatology.csv")[,2:6]
+names(clim_cape) <- c("CF","CP","CB","CM")
+clim_cape[[1]]$t <- date(clim_cape[[1]]$t)
+clim_cape[[2]]$t <- date(clim_cape[[2]]$t)
+clim_cape[[3]]$t <- date(clim_cape[[3]]$t)
+clim_cape[[4]]$t <- date(clim_cape[[4]]$t)
+```
+
+Detect extreme temperature events (`events`) and save graph (`x_graph`). 
+Set `coldSpells = FALSE` for heatwaves or `TRUE` for coldspells.
+```{r}
+for(i in 1:13){
+  site = names(clim_site)[i]
+  events <- detect_event(clim_site[[site]], coldSpells = FALSE) 
+
+  all_graph <- event_line(events, spread = 5000, category = FALSE)
+  extreme_graph <- event_line(events, spread = 600, category = FALSE)
+  category_graph <- event_line(events, spread = 250, category = TRUE)
+  blob_graph <- event_line(events, start_date = "2014-01-01",
+                           end_date = "2016-08-31", category = TRUE)
+
+  ggsave(all_graph, width = 6, height = 4, units = "in", dpi = 2000,
+       filename = paste0("../Figures & Tables/MHW Graphs/",site,"_all.jpg"))
+  ggsave(extreme_graph, width = 6, height = 4, units = "in", dpi = 2000,
+       filename = paste0("../Figures & Tables/MHW Graphs/",site,"_extreme.jpg"))
+  ggsave(category_graph, width = 6, height = 4, units = "in", dpi = 2000,
+       filename = paste0("../Figures & Tables/MHW Graphs/",site,"_category.jpg"))
+  ggsave(blob_graph, width = 6, height = 4, units = "in", dpi = 2000,
+       filename = paste0("../Figures & Tables/MHW Graphs/",site,"_blob.jpg"))}
+```
+
+Save theme for marine heatwave (MHW) graph.
+```{r}
+blobtheme <- 
+  theme(axis.title = element_text(size=10, color = "gray10", family = "Roboto"),
+        axis.text.y = element_text(color = "gray10", family = "Roboto",
+                                   margin=margin(l=-2, r=4, unit = "pt")),
+        axis.text.x = element_text(color = "gray10", family = "Roboto",
+                                   margin=margin(t=4, unit = "pt")),
+        axis.ticks = element_line(color = "gray10"),
+        axis.ticks.length = unit(3, "pt"),
+        panel.background = element_blank(),
+        panel.border = element_rect(fill = NA, color = "gray10", size = 1),
+        legend.key = element_blank(), 
+        legend.position = "none",
+        legend.box.spacing = unit(0.1,"cm"),
+        legend.title = element_text(size = 10, color = "gray10",
+                                    family = "Roboto Medium"),
+        legend.text = element_text(size = 9, color = "gray10",
+                                   family = "Roboto"),
+        plot.tag = element_text(size = 13, color="gray10", family = "Roboto"),
+        plot.tag.position = c(0.01,0.99))
+
+capetags <- c("a","b","c","d")
+capelabs <- c("Cape Foulweather, OR",
+              "Cape Perpetua, OR      ",
+              "Cape Blanco, OR          ",
+              "Cape Mendocino, CA  ")
+```
+Create MHW graphs per cape.
+```{r}
+for(i in 1:4){
+  cape = names(clim_cape)[i]
+  events <- detect_event(clim_cape[[cape]], coldSpells = FALSE) 
+
+  all_graph <- event_line(events, spread = 5000, category = FALSE)
+  extreme_graph <- event_line(events, spread = 600, category = FALSE)
+  blob_graph <- event_line(events, spread = 1000, category = FALSE,
+                           y_axis_title = "Temperature (\u00B0C)") +
+    annotate("text", color = "gray10", size = 2.9,
+           x = as.Date("2014-03-22", "%Y-%m-%d"), y = 17,
+           label = capelabs[i],
+           family = "Roboto") +
+   # annotate("segment", x = as.Date("2014-08-01", "%Y-%m-%d"),
+    #         xend = as.Date("2015-05-31", "%Y-%m-%d"), y = 7.5, yend = 7.5,
+    #       arrow = arrow(ends = "both", angle = 90, length = unit(.2,"cm"))) +
+    annotate("rect", alpha = 0, color = "gray10", linetype = "dashed", 
+             xmin = as.Date("2014-08-01", "%Y-%m-%d"), 
+             xmax = as.Date("2015-05-31", "%Y-%m-%d"), 
+             ymin = 7.5, ymax = 17.5) +
+    coord_fixed(ratio = 30, expand = FALSE, ylim = c(5.95,18.05),
+                xlim = c(as.Date("2013-11-01", "%Y-%m-%d"),
+                         as.Date("2017-02-28", "%Y-%m-%d"))) +
+    blobtheme #+ labs(tag = capetags[i])
+    
+
+  #ggsave(all_graph, width = 6, height = 4, units = "in", dpi = 2000,
+   #    filename = paste0("../Figures & Tables/MHW Graphs/",cape,"_all.jpg"))
+  #ggsave(extreme_graph, width = 6, height = 4, units = "in", dpi = 2000,
+   #    filename = paste0("../Figures & Tables/MHW Graphs/",cape,"_extreme.jpg"))
+  ggsave(blob_graph, width = 6, height = 2, units = "in", dpi = 2000,
+       filename = paste0("../Figures & Tables/MHW Graphs/",cape,"_blob20240330.svg"))}
+```
+
+Make the category MHW graphs from scratch.
+```{r}
+#Set line colors
+lineColCat <- c(
+  "Temperature" = "black",
+  "Climatology" = "blue",
+  "Threshold" = "darkgreen",
+  "2x Threshold" = "darkgreen",
+  "3x Threshold" = "darkgreen",
+  "4x Threshold" = "darkgreen"
+  )
+
+#Set category fill colors
+fillColCat <- c(
+  "Moderate" = "#ffc866",
+  "Strong" = "#ff6900",
+  "Severe" = "#9e0000",
+  "Extreme" = "#2d0000"
+  )
+
+for(i in 1:4){
+  cape = names(clim_cape)[i]
+  events <- detect_event(clim_cape[[cape]], coldSpells = FALSE) 
+
+#Create category breaks
+clim_cat <- events$climatology %>%
+  dplyr::mutate(diff = thresh - seas,
+                thresh_2x = thresh + diff,
+                thresh_3x = thresh_2x + diff,
+                thresh_4x = thresh_3x + diff)
+
+#Create category plots
+category_graph <- ggplot(data = clim_cat, aes(x = t, y = temp)) +
+  geom_flame(aes(y2 = thresh, fill = "Moderate")) +
+  geom_flame(aes(y2 = thresh_2x, fill = "Strong")) +
+  geom_flame(aes(y2 = thresh_3x, fill = "Severe")) +
+  geom_flame(aes(y2 = thresh_4x, fill = "Extreme")) +
+  geom_line(aes(y = thresh_2x, col = "2x Threshold"), size = 0.7, linetype = "dashed") +
+  geom_line(aes(y = thresh_3x, col = "3x Threshold"), size = 0.7, linetype = "dotdash") +
+  geom_line(aes(y = thresh_4x, col = "4x Threshold"), size = 0.7, linetype = "dotted") +
+  geom_line(aes(y = seas, col = "Climatology"), size = 0.7) +
+  geom_line(aes(y = thresh, col = "Threshold"), size = 0.7) +
+  geom_line(aes(y = temp, col = "Temperature"), size = 0.6) +
+  scale_colour_manual(name = NULL, values = lineColCat,
+                      breaks = c("Temperature", "Climatology", "Threshold",
+                                 "2x Threshold", "3x Threshold", "4x Threshold")) +
+  scale_fill_manual(name = NULL, values = fillColCat, guide = FALSE) +
+  scale_x_date(date_labels = "%b %Y") +
+  guides(colour = guide_legend(override.aes = list(linetype = c("solid", "solid", "solid",
+                                                                "dashed", "dotdash", "dotted"),
+                                                   size = c(0.6, 0.7, 0.7, 0.7, 0.7, 0.7)))) +
+  labs(y = NULL, x = NULL) +
+  coord_fixed(ratio = 15, expand = FALSE, ylim = c(7.5,21.5),
+                xlim = c(as.Date("2014-08-01", "%Y-%m-%d"),
+                         as.Date("2015-05-31", "%Y-%m-%d"))) + 
+  blobtheme + theme(legend.position = "none")
+
+ggsave(category_graph, width = 3, height = 2.5, units = "in", dpi = 2000,
+       filename = paste0("../Figures & Tables/MHW Graphs/",cape,"_category3.svg"))
+}
+```
+
+
