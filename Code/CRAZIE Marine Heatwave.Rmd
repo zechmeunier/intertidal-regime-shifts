@@ -127,6 +127,7 @@ capelabs <- c("Cape Foulweather, OR",
               "Cape Blanco, OR          ",
               "Cape Mendocino, CA  ")
 ```
+
 Create MHW graphs per cape.
 ```{r}
 for(i in 1:4){
