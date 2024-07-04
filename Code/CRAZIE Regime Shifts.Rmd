@@ -53,7 +53,7 @@ regimetheme <-
         legend.position = "top",
         legend.box = "vertical",
         legend.box.just = "left",
-        legend.box.spacing = unit(0,"cm"),
+        legend.box.spacing = unit(0.1,"cm"),
         legend.margin=margin(),
         legend.spacing.y = unit(0,"cm"),
         legend.title = element_text(size = 10, color = "gray10",
@@ -90,7 +90,7 @@ CFregimes <- ggplot(data = filter(regimes, Cape == "CF"),
   regimetheme
 
 ggsave(CFregimes,
-       filename = "Figures & Tables/HMM Graphs/CF Regimes 20240328.svg", 
+       filename = "Figures & Tables/HMM Graphs/CF Regimes 20240502.svg", 
        width = 5, height = 4, units = "in", dpi = 800)
 ```
 
@@ -119,7 +119,7 @@ CPregimes <- ggplot(data = filter(regimes, Cape == "CP"),
   regimetheme
 
 ggsave(CPregimes,
-       filename = "Figures & Tables/HMM Graphs/CP Regimes 20240328.svg", 
+       filename = "Figures & Tables/HMM Graphs/CP Regimes 20240502.svg", 
        width = 5, height = 4, units = "in", dpi = 800)
 ```
 
@@ -148,7 +148,7 @@ CBregimes <- ggplot(data = filter(regimes, Cape == "CB"),
   regimetheme
 
 ggsave(CBregimes,
-       filename = "Figures & Tables/HMM Graphs/CB Regimes 20240328.svg", 
+       filename = "Figures & Tables/HMM Graphs/CB Regimes 20240502.svg", 
        width = 5, height = 4, units = "in", dpi = 800)
 ```
 
@@ -177,7 +177,7 @@ CMregimes <- ggplot(data = filter(regimes, Cape == "CM"),
   regimetheme
 
 ggsave(CMregimes,
-       filename = "Figures & Tables/HMM Graphs/CM Regimes 20240328.svg", 
+       filename = "Figures & Tables/HMM Graphs/CM Regimes 20240502.svg", 
        width = 5, height = 4, units = "in", dpi = 800)
 ```
 
